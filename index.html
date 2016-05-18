@@ -1,0 +1,174 @@
+<html lang="en" >
+<head>
+    <script src="js/forceeng.js"></script>
+<!--    <apex:includeScript value="{!URLFOR($Resource.forcetkres, 'angular-force.js')}"  />-->
+  <meta name="viewport" content="width=device-width, initial-scale=1"></meta>
+  <!-- Angular Material style sheet -->
+  <link rel="stylesheet" href="https://ajax.googleapis.com/ajax/libs/angular_material/1.1.0-rc2/angular-material.min.css"></link>
+  <style>
+      body {
+          background: #EEEEEE;
+      }
+  </style>
+</head>
+<body ng-app="ngMainApp" ng-cloak="" bacground-color="#F5F5F5">
+  <!--
+    Your HTML content here
+  -->  
+    <div ng-view=""></div> 
+    
+    
+    <div ng-controller="ContactChipDemoCtrl as ctrl" layout="column" ng-cloak="">
+    <div class="layout-margin">
+    	<md-whiteframe class="md-whiteframe-6dp">
+	      <md-content class="md-padding autocomplete" layout="column">
+	        
+	        <md-contact-chips
+	            ng-model="ctrl.asyncContacts"
+	            md-contacts="ctrl.delayedQuerySearch($query)"
+	            md-contact-name="name"
+	            md-require-match="true"
+	            md-highlight-flags="i"
+	            filter-selected="ctrl.filterSelected"
+	            placeholder="Type Account Name">
+
+	        </md-contact-chips>
+	        
+	      </md-content>
+	      </md-whiteframe>
+	      <div style="margin:10px">
+	          <md-whiteframe class="md-whiteframe-3dp">
+	          <md-content>
+	              <md-list-item ng-repeat="obj in ctrl.asyncContacts">
+	                <p> {{ obj.name }} </p>
+	                <md-button class="md-secondary" ng-click="doSecondaryAction($event)">More Info</md-button>
+	              </md-list-item>
+	          </md-content>
+	          </md-whiteframe>
+	      </div>
+	    </div>
+    </div>
+  
+  <script src="https://code.jquery.com/jquery-2.2.3.min.js"></script>
+  <!-- Angular Material requires Angular.js Libraries -->
+  <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.5.3/angular.min.js"></script>
+  <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.5.3/angular-animate.min.js"></script>
+  <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.5.3/angular-aria.min.js"></script>
+  <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.5.3/angular-messages.min.js"></script>
+
+  <!-- Angular Material Library -->
+  <script src="https://ajax.googleapis.com/ajax/libs/angular_material/1.1.0-rc2/angular-material.min.js"></script>
+  
+  <!-- Your application bootstrap  -->
+  <script type="text/javascript">    
+      var client = new forcetk.Client();
+      client.setSessionToken('{!$Api.Session_ID}');
+    
+    
+    
+    (function () {
+      'use strict';
+      angular
+          .module('ngMainApp', ['ngMaterial','ngRoute'])
+          .config(function($mdThemingProvider, $routeProvider) {
+              $mdThemingProvider.theme('default')
+                .primaryPalette('teal')
+                .accentPalette('red');
+
+            })
+          .controller('ContactChipDemoCtrl', DemoCtrl);
+      function DemoCtrl ($scope, $q, $timeout, $routeProvider) {
+        var self = this;
+        var pendingSearch, cancelSearch = angular.noop;
+        var cachedQuery, lastSearch;
+        self.allContacts = loadContacts();
+        self.contacts = [];
+        self.asyncContacts = [];
+        self.filterSelected = true;
+        self.querySearch = querySearch;
+        self.delayedQuerySearch = delayedQuerySearch;
+        /**
+         * Search for contacts; use a random delay to simulate a remote call
+         */
+        function querySearch (criteria) {
+          cachedQuery = cachedQuery || criteria;
+          return cachedQuery ? self.allContacts.filter(createFilterFor(cachedQuery)) : [];
+        }
+        /**
+         * Async search for contacts
+         * Also debounce the queries; since the md-contact-chips does not support this
+         */
+        function delayedQuerySearch(criteria) {
+          cachedQuery = criteria;
+          if ( !pendingSearch || !debounceSearch() )  {
+            cancelSearch();
+            return pendingSearch = $q(function(resolve, reject) {
+              // Simulate async search... (after debouncing)
+              cancelSearch = reject;
+              $timeout(function() {
+                resolve( self.querySearch() );
+                refreshDebounce();
+              }, Math.random() * 500, true)
+            });
+          }
+          return pendingSearch;
+        }
+        function refreshDebounce() {
+          lastSearch = 0;
+          pendingSearch = null;
+          cancelSearch = angular.noop;
+        }
+        /**
+         * Debounce if querying faster than 300ms
+         */
+        function debounceSearch() {
+          var now = new Date().getMilliseconds();
+          lastSearch = lastSearch || now;
+          return ((now - lastSearch) < 300);
+        }
+        /**
+         * Create filter function for a query string
+         */
+        function createFilterFor(query) {
+          var lowercaseQuery = angular.lowercase(query);
+          return function filterFn(contact) {
+            return (contact._lowername.indexOf(lowercaseQuery) != -1);;
+          };
+        }
+        function loadContacts() {
+          loadAll();
+        }
+        
+        function loadAll() {
+            self.allContacts = [];
+          client.query('Select Id,Name from Account LIMIT 10',function(response) {
+              getalldata(response);
+          });
+        }
+        
+        function getalldata(response) {
+            console.log(response.records);
+            var contacts = response.records;
+            self.allContacts = contacts.map(function (c, index) {
+                var cParts = c.Name.split(' ');
+                var contact = {
+                  name: c.Name,
+                  email: '@example.com',
+                  image: 'http://lorempixel.com/50/50/people?' + index
+                };
+                contact._lowername = contact.name.toLowerCase();
+                return contact;
+              });
+        }
+        $scope.doPrimaryAction = function(event) {
+        };
+      }
+    })();
+    
+    
+    
+    
+  </script>
+  
+</body>
+</html>
